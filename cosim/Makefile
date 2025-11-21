@@ -8,8 +8,8 @@ $(BUILD_DIR):
 # --------------------------------------------
 # spike
 # --------------------------------------------
-SPIKE_CFLAGS    = -O3 -DDIFFTEST -include $(abspath .)/difftest-def.h
-SPIKE_CXXFLAGS  = -O3 -DDIFFTEST -include $(abspath .)/difftest-def.h -Wno-c99-designator
+SPIKE_CFLAGS    = -O3 -include $(abspath .)/cosim-def.h
+SPIKE_CXXFLAGS  = -O3 -include $(abspath .)/cosim-def.h -Wno-c99-designator
 SPIKE_LDFLAGS   =
 
 SPIKE_CONFIGURE_FLAGS = \
@@ -37,11 +37,11 @@ $(SPIKE_TARGET): $(SPIKE_MAKEFILE) $(SPIKE_SRCS)
 # --------------------------------------------
 # spike-so
 # --------------------------------------------
-# Dependencies for building the difftest dynamic library
-DIFFTEST_SOURCES = $(shell find . -maxdepth 1 -name '*.cc') $(CXX_UTILS)
-DIFFTEST_HEADERS = $(shell find . -maxdepth 1 -name '*.h')
+# Dependencies for building the cosim dynamic library
+COSIM_SOURCES = $(shell find . -maxdepth 1 -name '*.cc') $(CXX_UTILS)
+COSIM_HEADERS = $(shell find . -maxdepth 1 -name '*.h')
 # We need some utilities from spike
-CXX_UTILS = $(BUILD_DIR)/difftest_utils.cc
+CXX_UTILS = $(BUILD_DIR)/cosim_utils.cc
 $(CXX_UTILS): $(SPIKE_PATH)/spike_main/spike.cc
 	cp $< $(CXX_UTILS)
 	@sed -i 's/static //g' $@
@@ -56,8 +56,8 @@ INCS_PATH = -I$(SPIKE_PATH) -I$(BUILD_DIR) $(addprefix -I$(SPIKE_PATH)/, $(INCS)
 CXXFLAGS = $(SPIKE_CXXFLAGS) --std=c++17 -shared -fPIC
 
 TARGET = $(BUILD_DIR)/$(GUEST_ISA)-spike-so
-$(TARGET): $(SPIKE_TARGET) $(DIFFTEST_SOURCES) $(DIFFTEST_HEADERS) | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(INCS_PATH) $(DIFFTEST_SOURCES) $(LIBS_PATH) -o $@
+$(TARGET): $(SPIKE_TARGET) $(COSIM_SOURCES) $(COSIM_HEADERS) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCS_PATH) $(COSIM_SOURCES) $(LIBS_PATH) -o $@
 
 # --------------------------------------------
 # others

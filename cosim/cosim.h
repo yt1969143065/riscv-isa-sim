@@ -1,18 +1,16 @@
-#ifndef __DIFFTEST_H
-#define __DIFFTEST_H
+#ifndef __COSIM_H
+#define __COSIM_H
 
 #include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <cstdlib>
 
-#include "difftest-def.h"
+#include "cosim-def.h"
 #include "sim.h"
 #include "mmu.h"
 
-enum { DIFFTEST_TO_DUT, DIFFTEST_TO_REF };
-#define FMT_WORD "0x%016lx"
-#define DIFFTEST_REG_SIZE (sizeof(uint64_t) * 33) // GRPs + pc
+enum { REF_TO_ENV, ENV_TO_REF };
 
 typedef struct {
   uint64_t pc;
@@ -35,10 +33,10 @@ typedef struct {
 } diff_context_t;
 
 
-class DifftestRef {
+class CosimRef {
 public:
-  DifftestRef();
-  ~DifftestRef();
+  CosimRef();
+  ~CosimRef();
   void step(uint64_t n);
   void get_regs(diff_context_t *ctx);
   void set_regs(diff_context_t *ctx, bool on_demand);

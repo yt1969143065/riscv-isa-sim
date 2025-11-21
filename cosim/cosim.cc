@@ -1,9 +1,9 @@
 #include "decode_macros.h"
-#include "difftest.h"
+#include "cosim.h"
 #include "disasm.h"
 #include "softfloat.h"
 
-static debug_module_config_t difftest_dm_config = {
+static debug_module_config_t cosim_dm_config = {
   .progbufsize = 2,
   .max_sba_data_width = 0,
   .require_authentication = false,
@@ -17,11 +17,11 @@ static debug_module_config_t difftest_dm_config = {
 
 extern std::vector<std::pair<reg_t, abstract_mem_t*>> make_mems(const std::vector<mem_cfg_t> &layout);
 
-static DifftestRef *ref = nullptr;
+static CosimRef *ref = nullptr;
 static size_t overrided_mem_size = 0;
 static size_t overrided_mhartid = 0;
 
-DifftestRef::DifftestRef() :
+CosimRef::CosimRef() :
   cfg(create_cfg()),
   mems(make_mems(cfg->mem_layout)),
   plugin_devices(create_devices()),
@@ -33,7 +33,7 @@ DifftestRef::DifftestRef() :
 #endif
 }
 
-DifftestRef::~DifftestRef() {
+CosimRef::~CosimRef() {
   delete cfg;
   for (const auto& pair : mems) {
     delete pair.second;
@@ -41,12 +41,12 @@ DifftestRef::~DifftestRef() {
   delete sim;
 }
 
-void DifftestRef::step(uint64_t n) {
+void CosimRef::step(uint64_t n) {
   sim->step(n);
 }
  
-//spike --> difftest interface
-void DifftestRef::get_regs(diff_context_t *ctx) {
+//REF --> DUT
+void CosimRef::get_regs(diff_context_t *ctx) {
   ctx->pc = state->pc;
   for (int i = 0; i < NXPR; i++) {
     ctx->gpr[i] = state->XPR[i];
@@ -71,8 +71,8 @@ void DifftestRef::get_regs(diff_context_t *ctx) {
   /***************************************************************************************************/
 }
 
-//difftest interface --> spike
-void DifftestRef::set_regs(diff_context_t *ctx, bool on_demand) {
+//DUT --> REF
+void CosimRef::set_regs(diff_context_t *ctx, bool on_demand) {
   if (!on_demand || state->pc != ctx->pc) {
     state->pc = ctx->pc;
   }
@@ -110,7 +110,7 @@ void DifftestRef::set_regs(diff_context_t *ctx, bool on_demand) {
   }
 }
 
-void DifftestRef::memcpy_from_dut(reg_t dest, void* src, size_t n) {
+void CosimRef::memcpy_from_dut(reg_t dest, void* src, size_t n) {
   while (n) {
     char *base = sim->addr_to_mem(dest);
     size_t n_bytes = (n > PGSIZE) ? PGSIZE : n;
@@ -121,7 +121,7 @@ void DifftestRef::memcpy_from_dut(reg_t dest, void* src, size_t n) {
   }
 }
 
-const cfg_t *DifftestRef::create_cfg() {
+const cfg_t *CosimRef::create_cfg() {
   auto mem_size = overrided_mem_size ? overrided_mem_size : CONFIG_MEMORY_SIZE;
   auto memory_layout = std::vector<mem_cfg_t>{
     mem_cfg_t{DRAM_BASE, mem_size},
@@ -137,15 +137,15 @@ const cfg_t *DifftestRef::create_cfg() {
   cfg->mem_layout = memory_layout;
   cfg->hartids = std::vector<size_t>{overrided_mhartid};
   cfg->real_time_clint = false;
-  cfg->trigger_count = CONFIG_TRIGGER_NUM;
+  cfg->trigger_count = 0;
   return cfg;
 }
 
-const std::vector<std::pair<reg_t, abstract_device_t*>> DifftestRef::create_devices() {
+const std::vector<std::pair<reg_t, abstract_device_t*>> CosimRef::create_devices() {
   return std::vector<std::pair<reg_t, abstract_device_t*>>{ };
 }
 
-sim_t *DifftestRef::create_sim(const cfg_t *cfg) {
+sim_t *CosimRef::create_sim(const cfg_t *cfg) {
   sim_t *s = new sim_t(
     // const cfg_t *cfg,
     cfg,
@@ -158,7 +158,7 @@ sim_t *DifftestRef::create_sim(const cfg_t *cfg) {
     // const std::vector<std::string>& args
     std::vector<std::string>{},
     // const debug_module_config_t &dm_config
-    difftest_dm_config,
+    cosim_dm_config,
     // const char *log_path
     nullptr,
     //bool dtb_enabled, const char *dtb_file, bool socket_enabled, FILE *cmd_file
@@ -178,33 +178,33 @@ sim_t *DifftestRef::create_sim(const cfg_t *cfg) {
 
 extern "C" {
 
-void difftest_memcpy(uint64_t addr, void *buf, size_t n, bool direction) {
-  if (direction == DIFFTEST_TO_REF) {
+void cosim_memcpy(uint64_t addr, void *buf, size_t n, bool direction) {
+  if (direction == ENV_TO_REF) {
     ref->memcpy_from_dut(addr, buf, n);
   } else {
-    printf("difftest_memcpy with DIFFTEST_TO_DUT is not supported yet\n");
+    printf("cosim_memcpy with REF_TO_ENV is not supported yet\n");
     fflush(stdout);
     assert(0);
   }
 }
 
-void difftest_regcpy(diff_context_t* dut, bool direction, bool on_demand) {
-  if (direction == DIFFTEST_TO_REF) {
+void cosim_regcpy(diff_context_t* dut, bool direction, bool on_demand) {
+  if (direction == ENV_TO_REF) {
     ref->set_regs(dut, on_demand);
   } else {
     ref->get_regs(dut);
   }
 }
 
-void difftest_exec(uint64_t n) {
+void ref_exec(uint64_t n) {
   ref->step(n);
 }
 
-void difftest_init(int port) {
-  ref = new DifftestRef;
+void ref_init(int port) {
+  ref = new CosimRef;
 }
 
-void difftest_close() {
+void ref_close() {
   delete ref;
 }
 
