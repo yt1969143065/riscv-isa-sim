@@ -45,7 +45,7 @@ void CosimRef::step(uint64_t n) {
   sim->step(n);
 }
  
-//REF --> DUT
+//REF --> ENV
 void CosimRef::get_regs(diff_context_t *ctx) {
   ctx->pc = state->pc;
   for (int i = 0; i < NXPR; i++) {
@@ -71,7 +71,7 @@ void CosimRef::get_regs(diff_context_t *ctx) {
   /***************************************************************************************************/
 }
 
-//DUT --> REF
+//ENV --> REF
 void CosimRef::set_regs(diff_context_t *ctx, bool on_demand) {
   if (!on_demand || state->pc != ctx->pc) {
     state->pc = ctx->pc;
