@@ -84,6 +84,8 @@ riscv_test_srcs = \
 riscv_gen_hdrs = \
 	insn_list.h \
 
+riscv_insn_ext_custom = \
+	halt \
 
 riscv_insn_ext_i = \
 	add \
@@ -1133,6 +1135,7 @@ riscv_insn_ext_zvk = \
 	$(riscv_insn_ext_zvksh) \
 
 riscv_insn_list = \
+	$(riscv_insn_ext_custom) \
 	$(riscv_insn_ext_i) \
 	$(riscv_insn_ext_c) \
 	$(riscv_insn_ext_f) \

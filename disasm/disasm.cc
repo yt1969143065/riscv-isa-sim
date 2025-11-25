@@ -1012,6 +1012,7 @@ void disassembler_t::add_instructions(const isa_parser_t* isa, bool strict)
   add_insn(new disasm_insn_t("jalr", match_jalr | match_rd_ra, mask_jalr | mask_rd | mask_imm, {&xrs1}));
   DEFINE_ITYPE(jalr);
 
+  add_noarg_insn(this, "halt", match_halt, mask_halt);
   add_noarg_insn(this, "nop", match_addi, mask_addi | mask_rd | mask_rs1 | mask_imm);
   DEFINE_I0TYPE("li", addi);
   DEFINE_I1TYPE("mv", addi);
