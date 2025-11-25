@@ -8,8 +8,8 @@ $(BUILD_DIR):
 # --------------------------------------------
 # spike
 # --------------------------------------------
-SPIKE_CFLAGS    = -O3 -include $(abspath .)/cosim-def.h
-SPIKE_CXXFLAGS  = -O3 -include $(abspath .)/cosim-def.h -Wno-c99-designator
+SPIKE_CFLAGS    = -O3
+SPIKE_CXXFLAGS  = -O3 -Wno-c99-designator
 SPIKE_LDFLAGS   =
 
 SPIKE_CONFIGURE_FLAGS = \
@@ -39,7 +39,7 @@ $(SPIKE_TARGET): $(SPIKE_MAKEFILE) $(SPIKE_SRCS)
 # --------------------------------------------
 CXXFLAGS = $(SPIKE_CXXFLAGS) --std=c++17 -shared -fPIC
 
-COSIM_SOURCES = $(shell find . -maxdepth 1 -name '*.cc') $(CXX_UTILS)
+COSIM_SOURCES = $(shell find . -maxdepth 1 -name '*.cc')
 COSIM_HEADERS = $(shell find . -maxdepth 1 -name '*.h')
 
 INCS = fesvr riscv disasm customext fdt softfloat spike_main spike_dasm

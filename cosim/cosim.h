@@ -8,7 +8,6 @@
 
 #include "cosim-def.h"
 #include "sim.h"
-#include "mmu.h"
 
 enum { REF_TO_ENV, ENV_TO_REF };
 

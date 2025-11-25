@@ -1,7 +1,5 @@
 #include "decode_macros.h"
 #include "cosim.h"
-#include "disasm.h"
-#include "softfloat.h"
 
 static debug_module_config_t cosim_dm_config = {
   .progbufsize = 2,
@@ -36,10 +34,8 @@ CosimRef::CosimRef() :
   add_device(DRAM_BASE, std::shared_ptr<mem_t> (new mem_t(CONFIG_DRAM_SIZE)));
   p = get_core(0);
   state = p->get_state();
-  
   p->set_mmu_capability(CONFIG_MMU_CAPABILITY);
   p->reset();
-  
 }
 
 //REF --> ENV
@@ -164,5 +160,4 @@ void ref_init(int port) {
 void ref_close() {
   delete ref;
 }
-
 }
