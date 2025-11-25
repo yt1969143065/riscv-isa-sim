@@ -33,26 +33,16 @@ typedef struct {
 } diff_context_t;
 
 
-class CosimRef {
+class CosimRef : public sim_t{
 public:
   CosimRef();
-  ~CosimRef();
-  void step(uint64_t n);
+
   void get_regs(diff_context_t *ctx);
   void set_regs(diff_context_t *ctx, bool on_demand);
   void memcpy_from_dut(reg_t dest, void* src, size_t n);
 
 private:
-  const cfg_t *cfg;
-  const std::vector<std::pair<reg_t, abstract_mem_t*>> mems;
-  const std::vector<std::pair<reg_t, abstract_device_t*>> plugin_devices;
-  sim_t * const sim;
-  processor_t * const p;
-  state_t * const state;
-
   const cfg_t *create_cfg();
-  const std::vector<std::pair<reg_t, abstract_device_t*>> create_devices();
-  sim_t *create_sim(const cfg_t *cfg);
 };
 #endif
 

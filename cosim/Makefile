@@ -37,23 +37,16 @@ $(SPIKE_TARGET): $(SPIKE_MAKEFILE) $(SPIKE_SRCS)
 # --------------------------------------------
 # spike-so
 # --------------------------------------------
-# Dependencies for building the cosim dynamic library
+CXXFLAGS = $(SPIKE_CXXFLAGS) --std=c++17 -shared -fPIC
+
 COSIM_SOURCES = $(shell find . -maxdepth 1 -name '*.cc') $(CXX_UTILS)
 COSIM_HEADERS = $(shell find . -maxdepth 1 -name '*.h')
-# We need some utilities from spike
-CXX_UTILS = $(BUILD_DIR)/cosim_utils.cc
-$(CXX_UTILS): $(SPIKE_PATH)/spike_main/spike.cc
-	cp $< $(CXX_UTILS)
-	@sed -i 's/static //g' $@
-	@sed -i 's/int main/static int spike_main/g' $@
-
-LIBS = libriscv.a libdisasm.a libsoftfloat.a libfesvr.a libfdt.a
-LIBS_PATH   = $(addprefix $(BUILD_DIR)/, $(LIBS))
 
 INCS = fesvr riscv disasm customext fdt softfloat spike_main spike_dasm
 INCS_PATH = -I$(SPIKE_PATH) -I$(BUILD_DIR) $(addprefix -I$(SPIKE_PATH)/, $(INCS))
 
-CXXFLAGS = $(SPIKE_CXXFLAGS) --std=c++17 -shared -fPIC
+LIBS = libriscv.a libdisasm.a libsoftfloat.a libfesvr.a libfdt.a
+LIBS_PATH   = $(addprefix $(BUILD_DIR)/, $(LIBS))
 
 TARGET = $(BUILD_DIR)/$(GUEST_ISA)-spike-so
 $(TARGET): $(SPIKE_TARGET) $(COSIM_SOURCES) $(COSIM_HEADERS) | $(BUILD_DIR)

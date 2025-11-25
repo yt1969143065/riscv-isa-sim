@@ -4,7 +4,7 @@
 
 #define DEFAULT_KERNEL_BOOTARGS "console=ttyS0 earlycon"
 #define DEFAULT_RSTVEC     0x00001000
-#define DEFAULT_ISA        "rv64imafdc_zicntr_zihpm"
+#define DEFAULT_ISA        "rv64imafdcvzicsr_zifencei_zihpm_zicntr_zba_zbb_zbs_zfh_zvfh_zvl256b_zve64d"
 #define DEFAULT_PRIV       "MSU"
 #define CLINT_BASE         0x02000000
 #define CLINT_SIZE         0x000c0000

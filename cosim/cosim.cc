@@ -15,36 +15,33 @@ static debug_module_config_t cosim_dm_config = {
   .support_impebreak = false
 };
 
-extern std::vector<std::pair<reg_t, abstract_mem_t*>> make_mems(const std::vector<mem_cfg_t> &layout);
-
 static CosimRef *ref = nullptr;
-static size_t overrided_mem_size = 0;
-static size_t overrided_mhartid = 0;
+static processor_t *p = nullptr;
+static state_t *state = nullptr;
 
 CosimRef::CosimRef() :
-  cfg(create_cfg()),
-  mems(make_mems(cfg->mem_layout)),
-  plugin_devices(create_devices()),
-  sim(create_sim(cfg)),
-  p(sim->get_core(0UL)),
-  state(p->get_state()) {
-#if CONFIG_PMP_NUM > 0
-  p->set_pmp_granularity(1 << CONFIG_PMP_GRAN);
-#endif
+  sim_t(create_cfg(), //const cfg_t *cfg
+        false, //bool halted
+        std::vector<std::pair<reg_t, abstract_mem_t*>>{}, //std::vector<std::pair<reg_t, abstract_mem_t*>> mems
+        std::vector<device_factory_sargs_t> {}, //const std::vector<device_factory_sargs_t>& plugin_device_factories
+        std::vector<std::string>{""}, //const std::vector<std::string>& args
+        cosim_dm_config, //const debug_module_config_t &dm_config
+        nullptr, //const char *log_path
+        false, //bool dtb_enabled
+        nullptr, //const char *dtb_file
+        false, //bool socket_enabled
+        nullptr, //FILE *cmd_file
+        {}) //std::optional<unsigned long long> instruction_limit
+{
+  add_device(DRAM_BASE, std::shared_ptr<mem_t> (new mem_t(CONFIG_DRAM_SIZE)));
+  p = get_core(0);
+  state = p->get_state();
+  
+  p->set_mmu_capability(CONFIG_MMU_CAPABILITY);
+  p->reset();
+  
 }
 
-CosimRef::~CosimRef() {
-  delete cfg;
-  for (const auto& pair : mems) {
-    delete pair.second;
-  }
-  delete sim;
-}
-
-void CosimRef::step(uint64_t n) {
-  sim->step(n);
-}
- 
 //REF --> ENV
 void CosimRef::get_regs(diff_context_t *ctx) {
   ctx->pc = state->pc;
@@ -111,67 +108,27 @@ void CosimRef::set_regs(diff_context_t *ctx, bool on_demand) {
 }
 
 void CosimRef::memcpy_from_dut(reg_t dest, void* src, size_t n) {
-  while (n) {
-    char *base = sim->addr_to_mem(dest);
-    size_t n_bytes = (n > PGSIZE) ? PGSIZE : n;
-    memcpy(base, src, n_bytes);
-    dest += PGSIZE;
-    src = (char *)src + PGSIZE;
-    n -= n_bytes;
-  }
+  mmio_store(dest, n, (const uint8_t *)src);
 }
 
 const cfg_t *CosimRef::create_cfg() {
-  auto mem_size = overrided_mem_size ? overrided_mem_size : CONFIG_MEMORY_SIZE;
-  auto memory_layout = std::vector<mem_cfg_t>{
-    mem_cfg_t{DRAM_BASE, mem_size},
-  };
   auto const cfg = new cfg_t();
-  cfg->initrd_bounds = std::make_pair(0, 0);
-  cfg->bootargs = nullptr;
-  cfg->isa = CONFIG_DIFF_ISA_STRING;
-  cfg->priv = DEFAULT_PRIV;
-  cfg->misaligned = CONFIG_MISALIGNED;
-  cfg->endianness = endianness_little;
-  cfg->pmpregions = CONFIG_PMP_NUM;
-  cfg->mem_layout = memory_layout;
-  cfg->hartids = std::vector<size_t>{overrided_mhartid};
-  cfg->real_time_clint = false;
-  cfg->trigger_count = 0;
+  cfg->initrd_bounds = std::make_pair(0, 0);    //std::pair<reg_t, reg_t> initrd_bounds
+  cfg->bootargs = nullptr;                      //const char * bootargs
+  cfg->isa = DEFAULT_ISA;                       //const char * isa
+  cfg->priv = DEFAULT_PRIV;                     //const char * priv
+  cfg->misaligned = CONFIG_MISALIGNED;          //bool misaligned
+  cfg->endianness = endianness_little;          //endianness_t endianness
+  cfg->pmpregions = CONFIG_PMP_NUM;             //reg_t pmpregions
+  cfg->pmpgranularity = (1 << CONFIG_PMP_GRAN); //reg_t pmpgranularity
+  cfg->mem_layout = std::vector<mem_cfg_t>{};   //std::vector<mem_cfg_t> mem_layout
+  cfg->start_pc = std::optional<reg_t>{};       //std::optional<reg_t> start_pc
+  cfg->hartids = std::vector<size_t>{0};        //std::vector<size_t> hartids 
+  cfg->real_time_clint = false;                 //bool real_time_clint
+  cfg->trigger_count = 0;                       //reg_t trigger_count
+  cfg->cache_blocksz = 0;                       //reg_t cache_blocksz;
+  cfg->external_simulator = std::optional<abstract_sim_if_t*>{};//std::optional<abstract_sim_if_t*> external_simulator;
   return cfg;
-}
-
-const std::vector<std::pair<reg_t, abstract_device_t*>> CosimRef::create_devices() {
-  return std::vector<std::pair<reg_t, abstract_device_t*>>{ };
-}
-
-sim_t *CosimRef::create_sim(const cfg_t *cfg) {
-  sim_t *s = new sim_t(
-    // const cfg_t *cfg,
-    cfg,
-    // bool halted,
-    false,
-    // std::vector<std::pair<reg_t, abstract_mem_t*>> mems
-    mems,
-    // const std::vector<device_factory_sargs_t>& plugin_device_factories
-    std::vector<device_factory_sargs_t>{},
-    // const std::vector<std::string>& args
-    std::vector<std::string>{},
-    // const debug_module_config_t &dm_config
-    cosim_dm_config,
-    // const char *log_path
-    nullptr,
-    //bool dtb_enabled, const char *dtb_file, bool socket_enabled, FILE *cmd_file
-    false, nullptr, false, nullptr,
-    //std::optional<unsigned long long> instruction_limit
-    {}
-  );
-
-  for (const auto& pair : plugin_devices) {
-    s->add_device(pair.first, std::shared_ptr<abstract_device_t>(pair.second));
-  }
-
-  return s;
 }
 
 // Following are the interfaces for co-simulation with other designs
@@ -197,7 +154,7 @@ void cosim_regcpy(diff_context_t* dut, bool direction, bool on_demand) {
 }
 
 void ref_exec(uint64_t n) {
-  ref->step(n);
+  p->step(n);
 }
 
 void ref_init(int port) {

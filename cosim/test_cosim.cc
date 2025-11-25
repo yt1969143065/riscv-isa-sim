@@ -5,7 +5,6 @@
 #include <cassert>
 #include <memory>
 
-// 定义 diff_context_t（必须与 cosim.h 中完全一致）
 constexpr size_t VLEN = 256;
 constexpr size_t VENUM64 = VLEN / 64; 
 constexpr size_t VENUM32 = VLEN / 32; 
@@ -24,11 +23,9 @@ struct diff_context_t {
     } vr[32];
 };
 
-// 方向常量（与 cosim.h 一致）
 constexpr int ENV_TO_REF = 1;
 constexpr int REF_TO_ENV = 0;
 
-// 声明外部 C 接口函数指针类型（必须用 extern "C" 链接约定）
 extern "C" {
     using ref_init_t      = void(*)(int);
     using ref_close_t     = void(*)();
@@ -37,7 +34,6 @@ extern "C" {
     using cosim_memcpy_t  = void(*)(uint64_t, void*, size_t, int);
 }
 
-// RAII 封装 dlopen 句柄
 class DLHandle {
 public:
     explicit DLHandle(const char* path) {
@@ -70,21 +66,21 @@ private:
 
 int main() {
     try {
-        // 1. 加载动态库
+        // 1
         DLHandle lib("./build/riscv64-spike-so");
 
-        // 2. 获取函数指针
+        // 2
         auto ref_init      = reinterpret_cast<ref_init_t>(lib.get_symbol("ref_init"));
         auto ref_close     = reinterpret_cast<ref_close_t>(lib.get_symbol("ref_close"));
         auto ref_exec      = reinterpret_cast<ref_exec_t>(lib.get_symbol("ref_exec"));
         auto cosim_regcpy  = reinterpret_cast<cosim_regcpy_t>(lib.get_symbol("cosim_regcpy"));
         auto cosim_memcpy  = reinterpret_cast<cosim_memcpy_t>(lib.get_symbol("cosim_memcpy"));
 
-        // 3. 初始化参考模型
+        // 3
         std::cout << "Initializing CosimRef...\n";
         ref_init(0);
 
-        // 4. 设置初始状态: x1 = 50, pc = 0x80000000
+        // 4
         diff_context_t ctx{};
         ctx.pc = 0x80000000ULL;
         ctx.gpr[1] = 50; // x1 = 50
@@ -93,20 +89,20 @@ int main() {
                   << ", pc = 0x" << std::hex << ctx.pc << std::dec << "\n";
         cosim_regcpy(&ctx, ENV_TO_REF, 0); // on_demand = false
 
-        // 5. 写入指令: addi x2, x1, 30  => 机器码: 0x01e08113
+        // 5
         uint32_t inst = 0x01e08113; // addi x2, x1, 30
         std::cout << "Writing instruction at 0x" << std::hex << ctx.pc
                   << ": 0x" << inst << std::dec << "\n";
         cosim_memcpy(ctx.pc, &inst, sizeof(inst), ENV_TO_REF);
 
-        // 6. 执行 1 条指令
+        // 6
         std::cout << "Executing 1 instruction...\n";
         ref_exec(1);
 
-        // 7. 获取执行后状态
+        // 7
         cosim_regcpy(&ctx, REF_TO_ENV, 0);
 
-        // 8. 验证结果
+        // 8
         std::cout << "After execution:\n";
         std::cout << "  x1 = " << ctx.gpr[1] << "\n";
         std::cout << "  x2 = " << ctx.gpr[2] << "\n";
@@ -117,7 +113,7 @@ int main() {
 
         std::cout << "✅ C++ dlopen test passed!\n";
 
-        // 9. 清理（ref_close 会被调用，DLHandle 析构自动 dlclose）
+        // 9
         ref_close();
 
     } catch (const std::exception& e) {
